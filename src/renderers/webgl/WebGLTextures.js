@@ -279,14 +279,22 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 					if ( ! isCompressed ) {
 
-						if ( isDataTexture ) {
+						// if ( isDataTexture ) {
 
-							state.texImage2D( _gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glFormat, cubeImage[ i ].width, cubeImage[ i ].height, 0, glFormat, glType, cubeImage[ i ].data );
+						// 	state.texImage2D( _gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glFormat, cubeImage[ i ].width, cubeImage[ i ].height, 0, glFormat, glType, cubeImage[ i ].data );
 
-						} else {
+						// } else {
 
-							state.texImage2D( _gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glFormat, glFormat, glType, cubeImage[ i ] );
+						// 	state.texImage2D( _gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glFormat, glFormat, glType, cubeImage[ i ] );
 
+						// }
+						var mipmaps = texture.mipmaps;
+						if (!mipmaps.length) {
+							mipmaps.push(texture.image);
+						}
+
+						for ( var j = 0, jl = mipmaps.length; j < jl; j ++ ) {
+							state.texImage2D( _gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, j, glFormat, mipmaps[j][i].image.width, mipmaps[j][i].image.height, 0, glFormat, glType, mipmaps[j][i].image.data );
 						}
 
 					} else {
