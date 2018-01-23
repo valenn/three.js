@@ -57,7 +57,16 @@
 
 	}
 
-	float getShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
+	vec2 rand(in vec2 coord, in vec2 screenSize){ //generating noise/pattern texture for dithering
+		float noiseX = ((fract(1.0-coord.s*(screenSize.x/2.0))*0.25)+(fract(coord.t*(screenSize.y/2.0))*0.75))*2.0-1.0;
+		float noiseY = ((fract(1.0-coord.s*(screenSize.x/2.0))*0.75)+(fract(coord.t*(screenSize.y/2.0))*0.25))*2.0-1.0;
+
+		noiseX = clamp(fract(sin(dot(coord ,vec2(12.9898,78.233))) * 43758.5453),0.0,1.0)*2.0-1.0;
+		noiseY = clamp(fract(sin(dot(coord ,vec2(12.9898,78.233)*2.0)) * 43758.5453),0.0,1.0)*2.0-1.0;
+		return vec2(noiseX, noiseY)*0.001;
+	}
+
+	float getShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord, float rotationOffset ) {
 
 		float shadow = 1.0;
 
@@ -117,6 +126,30 @@
 				texture2DShadowLerp( shadowMap, shadowMapSize, shadowCoord.xy + vec2( 0.0, dy1 ), shadowCoord.z ) +
 				texture2DShadowLerp( shadowMap, shadowMapSize, shadowCoord.xy + vec2( dx1, dy1 ), shadowCoord.z )
 			) * ( 1.0 / 9.0 );
+
+		#elif defined( SHADOWMAP_TYPE_PCF_POISSON )
+
+			vec2 size = vec2( 1.0 ) / shadowMapSize * shadowRadius;
+
+			vec2 random = rand(shadowCoord.xy, shadowMapSize);
+			vec2 offset = fract(random * 1984.0);
+			float c = cos(rotationOffset * 6.28);
+			float s = sin(rotationOffset * 6.28);
+			mat2 r = mat2(
+				c, s,
+				-s, c
+			);
+
+			shadow = (
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( -0.2950385, 0.7193102 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( -0.07911481, -0.4511923 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( -0.8658563, 0.2036765 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( 0.3730283, 0.6626598 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( 0.5677469, -0.7365322 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( 0.4154446, 0.01343447 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( -0.8669648, -0.4146579 ) + offset) * size, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + (r * vec2( 0.9594449, -0.2792563 ) + offset) * size, shadowCoord.z )
+			) * (1.0 / 8.0);
 
 		#else // no percentage-closer filtering:
 
@@ -201,7 +234,7 @@
 
 	}
 
-	float getPointShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord, float shadowCameraNear, float shadowCameraFar ) {
+	float getPointShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord, float shadowCameraNear, float shadowCameraFar, float rotationOffset ) {
 
 		vec2 texelSize = vec2( 1.0 ) / ( shadowMapSize * vec2( 4.0, 2.0 ) );
 
@@ -231,6 +264,34 @@
 				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.xxx, texelSize.y ), dp ) +
 				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.yxx, texelSize.y ), dp )
 			) * ( 1.0 / 9.0 );
+
+		#elif defined( SHADOWMAP_TYPE_PCF_POISSON )
+
+			vec2 size = vec2( 1.0 ) / shadowMapSize * shadowRadius;
+
+			vec2 random = rand(shadowCoord.xy, shadowMapSize);
+			vec2 offset = fract(random * 1984.0) * vec2(10.0, 10.0);
+			float c = cos(rotationOffset * 6.28);
+			float s = sin(rotationOffset * 6.28);
+			mat2 r = mat2(
+				c, s,
+				-s, c
+			);
+
+			vec2 offset3 = (r * vec2( -offset.x, offset.y )) * shadowRadius * texelSize.y;
+
+			// TODO: make better sample distribution, it looks like shit... but how to add poisson samples to this crap?
+			return (
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.xyy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.yyy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.xyx, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.yyx, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.xxy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.yxy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.xxx, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset3.yxx, texelSize.y ), dp )
+			) * ( 1.0 / 8.0 );
+			// shadowCoord.xy + (r * vec2( -0.2950385, 0.7193102 ) + offset) * size
 
 		#else // no percentage-closer filtering
 
