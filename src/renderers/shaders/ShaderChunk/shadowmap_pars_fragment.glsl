@@ -132,7 +132,7 @@
 			vec2 size = vec2( 1.0 ) / shadowMapSize * shadowRadius;
 
 			vec2 random = rand(shadowCoord.xy, shadowMapSize);
-			vec2 offset = fract(random * 1984.0);
+			vec2 offset = fract(random * 1984.0) - 0.5;
 			float c = cos(rotationOffset * 6.28);
 			float s = sin(rotationOffset * 6.28);
 			mat2 r = mat2(
@@ -270,7 +270,7 @@
 			vec2 size = vec2( 1.0 ) / shadowMapSize * shadowRadius;
 
 			vec2 random = rand(shadowCoord.xy, shadowMapSize);
-			vec2 offset = fract(random * 1984.0) * vec2(10.0, 10.0);
+			vec2 offset = fract(random * 1984.0) * vec2(2.0, 2.0);
 			float c = cos(rotationOffset * 6.28);
 			float s = sin(rotationOffset * 6.28);
 			mat2 r = mat2(
