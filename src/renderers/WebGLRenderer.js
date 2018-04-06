@@ -2317,7 +2317,7 @@ function WebGLRenderer( parameters ) {
 
 		var textureUnit = _usedTextureUnits;
 
-		if ( textureUnit >= capabilities.maxTextures ) {
+		if ( textureUnit > capabilities.maxTextures ) {
 
 			console.warn( 'THREE.WebGLRenderer: Trying to use ' + textureUnit + ' texture units while this GPU supports only ' + capabilities.maxTextures );
 
